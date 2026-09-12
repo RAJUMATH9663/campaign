@@ -152,22 +152,27 @@ export default function Contacts() {
   return (
     <Layout title="Contacts">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-4">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search name, phone, email..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => {
-              setPage(1);
-              setSearch(e.target.value);
-            }}
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search name, phone, email..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => {
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+            />
+          </div>
+          <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400">
+            🔥 Mojo 1.0 SIMD Engine Active
+          </span>
         </div>
         <div className="flex gap-2">
           <input
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv,.xlsx,.xls,.txt"
             ref={fileInputRef}
             className="hidden"
             onChange={handleFileSelect}
@@ -177,8 +182,12 @@ export default function Contacts() {
               <Trash2 className="h-4 w-4" /> Delete All
             </Button>
           )}
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4" /> Upload CSV/XLSX
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="border-orange-300 dark:border-orange-800 text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+          >
+            <Upload className="h-4 w-4 text-orange-500" /> Upload CSV (Mojo)
           </Button>
           <Button onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" /> Add Contact
