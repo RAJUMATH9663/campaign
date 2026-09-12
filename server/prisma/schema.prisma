@@ -1,0 +1,236 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum Channel {
+  SMS
+  WHATSAPP
+}
+
+enum OptStatus {
+  OPTED_IN
+  OPTED_OUT
+  UNKNOWN
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum MessageStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  OPTED_OUT
+}
+
+enum RecipientSource {
+  ALL
+  GROUP
+  TAGS
+  SELECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contacts     Contact[]
+  groups       ContactGroup[]
+  campaigns    Campaign[]
+  templates    MessageTemplate[]
+  providers    Provider[]
+  auditLogs    AuditLog[]
+}
+
+model Contact {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  name           String
+  phone          String    // normalized E.164
+  rawPhone       String?
+  email          String?
+  whatsappOptIn  Boolean   @default(false)
+  smsOptIn       Boolean   @default(false)
+  tags           String[]  @default([])
+  isValid        Boolean   @default(true)
+  invalidReason  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  groups         ContactGroupMember[]
+  consents       Consent[]
+  recipients     CampaignRecipient[]
+  messages       Message[]
+
+  @@unique([userId, phone])
+  @@index([userId])
+  @@index([phone])
+}
+
+model ContactGroup {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+
+  members   ContactGroupMember[]
+
+  @@index([userId])
+}
+
+model ContactGroupMember {
+  id        String       @id @default(cuid())
+  groupId   String
+  group     ContactGroup @relation(fields: [groupId], references: [id])
+  contactId String
+  contact   Contact      @relation(fields: [contactId], references: [id])
+
+  @@unique([groupId, contactId])
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  name           String
+  channel        Channel
+  message        String
+  status         CampaignStatus @default(DRAFT)
+  recipientSource RecipientSource @default(ALL)
+  filterTags     String[]       @default([])
+  groupId        String?
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  recipients     CampaignRecipient[]
+  messages       Message[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model CampaignRecipient {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id])
+  eligible    Boolean  @default(true)
+  excludeReason String?
+  createdAt   DateTime @default(now())
+
+  @@unique([campaignId, contactId])
+}
+
+model Message {
+  id          String        @id @default(cuid())
+  campaignId  String
+  campaign    Campaign      @relation(fields: [campaignId], references: [id])
+  contactId   String
+  contact     Contact       @relation(fields: [contactId], references: [id])
+  channel     Channel
+  content     String
+  status      MessageStatus @default(PENDING)
+  providerId  String?
+  providerMsgId String?
+  error       String?
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([contactId])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  channel   Channel
+  content   String
+  variables String[] @default([])
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Consent {
+  id            String    @id @default(cuid())
+  contactId     String
+  contact       Contact   @relation(fields: [contactId], references: [id])
+  channel       Channel
+  optedIn       Boolean
+  source        String
+  timestamp     DateTime  @default(now())
+
+  @@index([contactId])
+}
+
+model SuppressionList {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  reason    String?
+  channel   Channel?
+  createdAt DateTime @default(now())
+}
+
+model Provider {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  type         String   // "SMS" | "WHATSAPP" | "AI"
+  name         String   // e.g. "twilio", "openai", "anthropic"
+  config       Json     // non-secret config only; secrets via env
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
