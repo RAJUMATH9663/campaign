@@ -43,6 +43,8 @@ export default function Contacts() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
+    engine?: string;
+    elapsedMicroseconds?: number;
     totalRows: number;
     validCount: number;
     invalidCount: number;
@@ -345,6 +347,18 @@ export default function Contacts() {
       >
         {importPreview && (
           <div className="space-y-4">
+            {importPreview.engine && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 border border-orange-500/30 text-xs">
+                <span className="font-semibold text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
+                  🔥 {importPreview.engine}
+                </span>
+                {importPreview.elapsedMicroseconds ? (
+                  <span className="font-mono font-medium text-[11px] text-orange-700 dark:text-orange-300">
+                    {(importPreview.elapsedMicroseconds / 1000).toFixed(2)} ms execution
+                  </span>
+                ) : null}
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-3">
                 <p className="text-xl font-semibold text-emerald-700 dark:text-emerald-400">

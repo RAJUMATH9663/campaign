@@ -3,6 +3,7 @@ import { AuthedRequest } from "../middleware/auth.middleware";
 import { prisma } from "../utils/prisma";
 import { AppError } from "../middleware/error.middleware";
 import { parseAndValidateContacts, saveValidContacts } from "../services/contact.service";
+import { validateCsvWithMojo } from "../services/mojo.service";
 import { normalizeAndValidatePhone } from "../utils/phone";
 
 export async function listContacts(req: AuthedRequest, res: Response) {
@@ -114,13 +115,44 @@ export async function deleteAllContacts(req: AuthedRequest, res: Response) {
  *  frontend show a preview of valid/invalid/duplicate counts before commit. */
 export async function previewImport(req: AuthedRequest, res: Response) {
   if (!req.file) throw new AppError("No file uploaded");
-  const rows = parseAndValidateContacts(req.file.buffer, req.file.originalname);
 
+  const isCsv = req.file.originalname.toLowerCase().endsWith(".csv");
+  if (isCsv) {
+    try {
+      const csvText = req.file.buffer.toString("utf-8");
+      const mojoResult = await validateCsvWithMojo(csvText);
+
+      return res.json({
+        engine: mojoResult.engine,
+        elapsedMicroseconds: mojoResult.elapsedMicroseconds,
+        totalRows: mojoResult.totalRows,
+        validCount: mojoResult.validCount,
+        invalidCount: mojoResult.invalidCount,
+        duplicateCount: mojoResult.duplicateCount,
+        rows: mojoResult.rows.map((r) => ({
+          name: r.name,
+          phone: r.rawPhone,
+          normalizedPhone: r.normalizedPhone,
+          email: r.email,
+          whatsappOptIn: true,
+          smsOptIn: true,
+          isValid: r.isValid,
+          isDuplicateInFile: r.isDuplicate,
+          errors: r.error ? [r.error] : [],
+        })),
+      });
+    } catch (mojoErr: any) {
+      console.warn("[Mojo] Engine fallback to TypeScript parser:", mojoErr.message);
+    }
+  }
+
+  const rows = parseAndValidateContacts(req.file.buffer, req.file.originalname);
   const validCount = rows.filter((r) => r.isValid).length;
   const invalidCount = rows.length - validCount;
   const duplicateCount = rows.filter((r) => r.isDuplicateInFile).length;
 
   res.json({
+    engine: "Standard TypeScript Parser",
     totalRows: rows.length,
     validCount,
     invalidCount,
